@@ -597,23 +597,32 @@ body{
     return {
       title: 'My Diary',
       subtitle: 'a place I keep my days',
-      password: null,
       entries: []
     };
   }
 
   async function loadData(){
+    if(window.storage){
+      try{
+        const res = await window.storage.get(STORAGE_KEY, true);
+        if(res && res.value){
+          return JSON.parse(res.value);
+        }
+      }catch(e){ /* key doesn't exist yet */ }
+      return null;
+    }
     try{
-      const res = await window.storage.get(STORAGE_KEY, true);
-      if(res && res.value){
-        return JSON.parse(res.value);
-      }
-    }catch(e){ /* key doesn't exist yet */ }
-    return null;
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
   }
 
   async function saveData(){
-    await window.storage.set(STORAGE_KEY, JSON.stringify(diaryData), true);
+    if(window.storage){
+      await window.storage.set(STORAGE_KEY, JSON.stringify(diaryData), true);
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryData));
   }
 
   const MOODS = ['😊','😔','🎉','😴','❤️','😤','😭','🤔'];
@@ -793,16 +802,13 @@ body{
   el('saveEntryBtn').addEventListener('click', saveEntry);
 
   // ---------- Owner unlock ----------
-  function openModal(setupMode){
+  const OWNER_CODE = '18290';
+
+  function openModal(){
     el('modalError').textContent = '';
     el('modalPasswordInput').value = '';
-    if(setupMode){
-      el('modalHeading').textContent = 'Set up your diary';
-      el('modalSub').textContent = 'Choose a password. Anyone with it can add or edit entries, so keep it private.';
-    } else {
-      el('modalHeading').textContent = 'Unlock editing';
-      el('modalSub').textContent = 'Enter your diary password to write or edit entries.';
-    }
+    el('modalHeading').textContent = 'Unlock editing';
+    el('modalSub').textContent = 'Enter the owner code to write or edit entries.';
     el('modalBackdrop').classList.add('visible');
     el('modalPasswordInput').focus();
   }
@@ -817,34 +823,21 @@ body{
       showToc();
       return;
     }
-    openModal(!diaryData.password);
+    openModal();
   });
   el('modalCancel').addEventListener('click', closeModal);
   el('modalBackdrop').addEventListener('click', (e)=>{
     if(e.target === el('modalBackdrop')) closeModal();
   });
-  el('modalConfirm').addEventListener('click', async ()=>{
+  el('modalConfirm').addEventListener('click', ()=>{
     const val = el('modalPasswordInput').value;
-    if(!diaryData.password){
-      if(!val || val.length < 3){
-        el('modalError').textContent = 'Please choose a password with at least 3 characters.';
-        return;
-      }
-      diaryData.password = val;
-      await saveData();
-      isOwner = true;
-      el('penFab').classList.add('active');
-      closeModal();
-      showToc();
-      return;
-    }
-    if(val === diaryData.password){
+    if(val === OWNER_CODE){
       isOwner = true;
       el('penFab').classList.add('active');
       closeModal();
       showToc();
     } else {
-      el('modalError').textContent = 'That password is not right.';
+      el('modalError').textContent = 'That code is not right.';
     }
   });
   el('modalPasswordInput').addEventListener('keydown', (e)=>{

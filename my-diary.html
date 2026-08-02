@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Diary</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700;900&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;700&display=swap');
+
+:root{
+  --cover: #2f3e32;
+  --cover-dark: #1c2620;
+  --cover-emboss: #4a5c4d;
+  --page: #f3ecdb;
+  --page-shadow: #d9cfb3;
+  --ink: #3b2a20;
+  --ink-soft: #6b5a48;
+  --gold: #c9a227;
+  --gold-soft: #e4c874;
+  --red-ribbon: #7a2e2e;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(ellipse at 50% 0%, #3a4a3d 0%, #12180f 75%);
+  font-family:'Lora', serif;
+  color:var(--ink);
+  overflow-x:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+.stage{
+  width:100%;
+  max-width:760px;
+  min-height:640px;
+  position:relative;
+  perspective:2400px;
+}
+
+/* ---------------- COVER ---------------- */
+.cover{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(135deg, var(--cover) 0%, var(--cover-dark) 100%);
+  border-radius:6px;
+  box-shadow:
+    0 30px 60px -20px rgba(0,0,0,0.6),
+    inset 0 0 0 2px rgba(201,162,39,0.25),
+    inset 0 0 40px rgba(0,0,0,0.4);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  cursor:pointer;
+  transform-origin:left center;
+  transition:transform 0.9s cubic-bezier(.6,0,.3,1), opacity 0.9s ease;
+  padding:40px;
+  z-index:5;
+}
+.cover.open{
+  transform: rotateY(-150deg);
+  opacity:0;
+  pointer-events:none;
+}
+.cover::before{
+  content:"";
+  position:absolute;
+  left:26px; top:26px; right:26px; bottom:26px;
+  border:1px solid rgba(201,162,39,0.35);
+  border-radius:3px;
+  pointer-events:none;
+}
+.cover-ribbon{
+  position:absolute;
+  top:0; right:56px;
+  width:22px; height:120px;
+  background:var(--red-ribbon);
+  box-shadow:0 6px 14px rgba(0,0,0,0.4);
+  clip-path:polygon(0 0,100% 0,100% 85%,50% 100%,0 85%);
+}
+.cover-title{
+  font-family:'Playfair Display',serif;
+  font-weight:900;
+  font-size:clamp(2rem, 5vw, 3.2rem);
+  color:var(--gold-soft);
+  letter-spacing:0.02em;
+  text-shadow:0 2px 0 rgba(0,0,0,0.5);
+  margin:0 0 10px;
+  max-width:80%;
+  line-height:1.15;
+}
+.cover-sub{
+  font-family:'Caveat',cursive;
+  font-size:1.4rem;
+  color:rgba(228,200,116,0.8);
+  margin:0 0 40px;
+}
+.cover-hint{
+  font-size:0.85rem;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:rgba(228,200,116,0.55);
+  border:1px solid rgba(228,200,116,0.35);
+  border-radius:999px;
+  padding:10px 22px;
+}
+.cover-owner-note{
+  position:absolute;
+  bottom:18px;
+  font-size:0.72rem;
+  color:rgba(228,200,116,0.4);
+  letter-spacing:0.05em;
+}
+
+/* ---------------- BOOK BODY (TOC + pages) ---------------- */
+.book{
+  position:absolute;
+  inset:0;
+  background:var(--page);
+  border-radius:6px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,0.55);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.6s ease 0.3s;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.book.visible{opacity:1; pointer-events:auto;}
+
+.book-header{
+  padding:26px 34px 16px;
+  border-bottom:1px solid var(--page-shadow);
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:16px;
+}
+.book-header h1{
+  font-family:'Playfair Display',serif;
+  font-size:1.5rem;
+  margin:0;
+  color:var(--ink);
+}
+.back-to-cover{
+  background:none;
+  border:none;
+  font-family:'Lora',serif;
+  font-size:0.85rem;
+  color:var(--ink-soft);
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  white-space:nowrap;
+}
+.back-to-cover:hover{color:var(--ink);}
+
+.pages{
+  flex:1;
+  overflow-y:auto;
+  position:relative;
+  background-color:var(--page);
+  background-image:
+    linear-gradient(to bottom, transparent 29px, #e3d7ba 30px),
+    linear-gradient(to right, transparent 44px, rgba(122,46,46,0.32) 45px, transparent 46px);
+  background-size: 100% 30px, 100% 100%;
+  background-attachment: local, local;
+  background-repeat: repeat, no-repeat;
+}
+
+/* ---- Table of contents ---- */
+.toc{
+  padding:20px 34px 100px 58px;
+}
+.toc-empty{
+  margin-top:60px;
+  text-align:center;
+  color:var(--ink-soft);
+}
+.toc-empty p{margin:6px 0;}
+.entry-row{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  padding:14px 4px;
+  border-bottom:1px dotted var(--page-shadow);
+  cursor:pointer;
+  position:relative;
+}
+.entry-row.is-latest{padding-left:22px;}
+.entry-row.is-latest::before{
+  content:"";
+  position:absolute;
+  left:0; top:6px;
+  width:10px; height:22px;
+  background:var(--red-ribbon);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);
+  box-shadow:0 2px 4px rgba(0,0,0,0.25);
+}
+.entry-mood{
+  font-size:1.05rem;
+  flex-shrink:0;
+}
+.entry-row:hover .entry-title{color:var(--gold);}
+.entry-date{
+  font-family:'Caveat',cursive;
+  font-size:1.15rem;
+  color:var(--ink-soft);
+  flex-shrink:0;
+  width:110px;
+}
+.entry-title{
+  font-family:'Playfair Display',serif;
+  font-weight:700;
+  font-size:1.05rem;
+  color:var(--ink);
+  flex:1;
+  transition:color 0.15s ease;
+}
+.entry-actions{
+  display:flex;
+  gap:8px;
+}
+.icon-btn{
+  background:none;
+  border:none;
+  cursor:pointer;
+  font-size:0.95rem;
+  color:var(--ink-soft);
+  padding:4px 6px;
+  border-radius:4px;
+}
+.icon-btn:hover{background:rgba(0,0,0,0.06); color:var(--ink);}
+
+/* ---- Page-turn transition ---- */
+.page-view{
+  transition: opacity 0.28s ease, transform 0.32s cubic-bezier(.5,0,.3,1);
+  transform-origin:left center;
+}
+.page-view.turning-out{
+  opacity:0;
+  transform:rotateY(-12deg) translateX(-14px);
+}
+.page-view.turning-in{
+  animation:pageTurnIn 0.38s cubic-bezier(.3,0,.2,1);
+}
+@keyframes pageTurnIn{
+  from{ opacity:0; transform:rotateY(10deg) translateX(14px); }
+  to{ opacity:1; transform:rotateY(0) translateX(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .page-view, .page-view.turning-out, .page-view.turning-in{
+    transition:none; animation:none; transform:none; opacity:1;
+  }
+}
+
+/* ---- Reading page ---- */
+.reading{
+  padding:30px 40px 80px 58px;
+  display:none;
+}
+.reading.visible{display:block;}
+.reading-date{
+  font-family:'Caveat',cursive;
+  font-size:1.5rem;
+  color:var(--ink-soft);
+  margin:0 0 4px;
+}
+.reading-title{
+  font-family:'Playfair Display',serif;
+  font-weight:700;
+  font-size:1.8rem;
+  margin:0 0 20px;
+  color:var(--ink);
+}
+#readingMood{margin-right:8px;}
+.mood-btn{
+  font-size:1.3rem;
+  background:#fffdf7;
+  border:1px solid var(--page-shadow);
+  border-radius:6px;
+  width:42px;
+  height:42px;
+  cursor:pointer;
+  line-height:1;
+}
+.mood-btn.selected{
+  border-color:var(--gold);
+  background:rgba(201,162,39,0.18);
+  box-shadow:inset 0 0 0 1px var(--gold);
+}
+.reading-body{
+  font-size:1.05rem;
+  line-height:30px;
+  white-space:pre-wrap;
+  color:var(--ink);
+}
+.reading-back{
+  background:none;
+  border:none;
+  font-family:'Lora',serif;
+  font-size:0.85rem;
+  color:var(--ink-soft);
+  cursor:pointer;
+  margin-bottom:18px;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.reading-back:hover{color:var(--ink);}
+
+/* ---- Editor ---- */
+.editor-panel{
+  padding:24px 34px 40px 58px;
+}
+.editor-panel input, .editor-panel textarea{
+  width:100%;
+  font-family:'Lora',serif;
+  font-size:1rem;
+  color:var(--ink);
+  background:#fffdf7;
+  border:1px solid var(--page-shadow);
+  border-radius:4px;
+  padding:10px 12px;
+  margin-bottom:14px;
+}
+.editor-panel textarea{
+  min-height:224px;
+  resize:vertical;
+  line-height:28px;
+  background-color:#fffdf7;
+  background-image:
+    linear-gradient(to bottom, transparent 27px, #d9cbaa 28px),
+    linear-gradient(to right, transparent 44px, rgba(122,46,46,0.4) 45px, transparent 46px);
+  background-size: 100% 28px, 100% 100%;
+  background-attachment: local, local;
+  background-repeat: repeat, no-repeat;
+  padding:8px 16px 8px 56px;
+}
+.editor-panel label{
+  font-size:0.78rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--ink-soft);
+  display:block;
+  margin-bottom:6px;
+}
+.field{margin-bottom:16px;}
+.btn-row{
+  display:flex;
+  gap:10px;
+  margin-top:6px;
+}
+.btn{
+  font-family:'Lora',serif;
+  font-size:0.9rem;
+  padding:10px 18px;
+  border-radius:4px;
+  border:1px solid var(--ink);
+  background:var(--ink);
+  color:var(--page);
+  cursor:pointer;
+}
+.btn.secondary{
+  background:transparent;
+  color:var(--ink);
+}
+.btn:hover{opacity:0.85;}
+
+/* ---- Floating pen (edit mode toggle) ---- */
+.pen-fab{
+  position:fixed;
+  bottom:26px;
+  right:26px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:var(--gold);
+  border:none;
+  box-shadow:0 8px 20px rgba(0,0,0,0.35);
+  cursor:pointer;
+  font-size:1.3rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:20;
+  transition:transform 0.15s ease;
+}
+.pen-fab:hover{transform:scale(1.06);}
+.pen-fab.active{
+  background:var(--red-ribbon);
+  color:#fff;
+}
+
+.add-entry-fab{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin:16px 4px 0;
+  background:var(--gold);
+  border:none;
+  color:var(--ink);
+  font-family:'Lora',serif;
+  font-weight:600;
+  font-size:0.9rem;
+  padding:10px 16px;
+  border-radius:999px;
+  cursor:pointer;
+}
+.add-entry-fab:hover{opacity:0.9;}
+
+/* ---- Modal ---- */
+.modal-backdrop{
+  position:fixed; inset:0;
+  background:rgba(20,20,15,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:50;
+  padding:20px;
+}
+.modal-backdrop.visible{display:flex;}
+.modal{
+  background:var(--page);
+  border-radius:8px;
+  padding:28px 26px;
+  width:100%;
+  max-width:380px;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);
+}
+.modal h2{
+  font-family:'Playfair Display',serif;
+  font-size:1.25rem;
+  margin:0 0 6px;
+  color:var(--ink);
+}
+.modal p{
+  font-size:0.88rem;
+  color:var(--ink-soft);
+  margin:0 0 16px;
+  line-height:1.5;
+}
+.modal input{
+  width:100%;
+  font-family:'Lora',serif;
+  font-size:1rem;
+  padding:10px 12px;
+  border:1px solid var(--page-shadow);
+  border-radius:4px;
+  margin-bottom:14px;
+  background:#fffdf7;
+  color:var(--ink);
+}
+.modal-error{
+  color:var(--red-ribbon);
+  font-size:0.82rem;
+  margin:-8px 0 12px;
+  min-height:1em;
+}
+
+.loading-msg{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(228,200,116,0.6);
+  font-family:'Caveat',cursive;
+  font-size:1.3rem;
+  z-index:6;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cover{transition:none;}
+  .book{transition:none;}
+}
+
+@media (max-width:520px){
+  .stage{min-height:560px;}
+  .book-header{padding:18px 18px 12px;}
+  .toc{padding:14px 18px 90px 50px;}
+  .reading{padding:20px 20px 70px 50px;}
+  .editor-panel{padding:18px 18px 30px 50px;}
+  .entry-date{width:82px; font-size:1rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="cover" id="cover">
+    <div class="cover-ribbon"></div>
+    <p class="loading-msg" id="loadingMsg">Untying the ribbon…</p>
+    <div id="coverContent" style="display:none;">
+      <h1 class="cover-title" id="coverTitle">My Diary</h1>
+      <p class="cover-sub" id="coverSub">a place I keep my days</p>
+      <div class="cover-hint">Click to open</div>
+    </div>
+    <p class="cover-owner-note">Only the owner can write here — everyone else just reads</p>
+  </div>
+
+  <div class="book" id="book">
+    <div class="book-header">
+      <h1 id="bookTitle">My Diary</h1>
+      <button class="back-to-cover" id="closeBook">close book</button>
+    </div>
+
+    <div class="pages page-view" id="pagesContainer">
+      <div class="toc" id="toc">
+        <!-- entries injected here -->
+      </div>
+
+      <div class="reading" id="reading">
+        <button class="reading-back" id="readingBack">&larr; back to contents</button>
+        <p class="reading-date" id="readingDate"></p>
+        <h2 class="reading-title" id="readingTitle"><span id="readingMood"></span><span id="readingTitleText"></span></h2>
+        <div class="reading-body" id="readingBody"></div>
+      </div>
+
+      <div class="editor-panel" id="editorPanel" style="display:none;">
+        <h2 style="font-family:'Playfair Display',serif; font-size:1.2rem; margin:0 0 16px;" id="editorHeading">New entry</h2>
+        <div class="field">
+          <label>Date</label>
+          <input type="text" id="entryDateInput" placeholder="e.g. August 2, 2026">
+        </div>
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="entryTitleInput" placeholder="Give this page a title">
+        </div>
+        <div class="field">
+          <label>Mood (optional)</label>
+          <div id="moodPicker" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="field">
+          <label>Your story</label>
+          <textarea id="entryBodyInput" placeholder="Write what happened..."></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="saveEntryBtn">Save entry</button>
+          <button class="btn secondary" id="cancelEntryBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="pen-fab" id="messageFab" title="Leave a message" style="right:90px; background:var(--page); color:var(--ink); border:1px solid var(--gold);">&#9993;</button>
+<button class="pen-fab" id="penFab" title="Owner sign-in">&#9998;</button>
+
+<!-- Password / setup modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2 id="modalHeading">Unlock editing</h2>
+    <p id="modalSub">Enter your diary password to write or edit entries.</p>
+    <input type="password" id="modalPasswordInput" placeholder="Password">
+    <p class="modal-error" id="modalError"></p>
+    <div class="btn-row">
+      <button class="btn" id="modalConfirm">Unlock</button>
+      <button class="btn secondary" id="modalCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="messageModalBackdrop">
+  <div class="modal">
+    <h2>Leave a message</h2>
+    <p>This opens your email app with a note addressed to the diary's owner.</p>
+    <input type="text" id="msgNameInput" placeholder="Your name">
+    <textarea id="msgBodyInput" placeholder="Your message" style="min-height:120px; width:100%; font-family:'Lora',serif; font-size:1rem; padding:10px 12px; border:1px solid var(--page-shadow); border-radius:4px; margin-bottom:14px; background:#fffdf7; color:var(--ink);"></textarea>
+    <p class="modal-error" id="msgError"></p>
+    <div class="btn-row">
+      <button class="btn" id="msgSendBtn">Open email to send</button>
+      <button class="btn secondary" id="msgCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const STORAGE_KEY = 'diary-data';
+  let diaryData = null;
+  let isOwner = false;
+  let editingEntryId = null;
+
+  const el = id => document.getElementById(id);
+
+  function defaultData(){
+    return {
+      title: 'My Diary',
+      subtitle: 'a place I keep my days',
+      password: null,
+      entries: []
+    };
+  }
+
+  async function loadData(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, true);
+      if(res && res.value){
+        return JSON.parse(res.value);
+      }
+    }catch(e){ /* key doesn't exist yet */ }
+    return null;
+  }
+
+  async function saveData(){
+    await window.storage.set(STORAGE_KEY, JSON.stringify(diaryData), true);
+  }
+
+  const MOODS = ['😊','😔','🎉','😴','❤️','😤','😭','🤔'];
+  let selectedMood = '';
+
+  function renderMoodPicker(current){
+    selectedMood = current || '';
+    const wrap = el('moodPicker');
+    wrap.innerHTML = MOODS.map(m => `
+      <button type="button" class="mood-btn${m===selectedMood?' selected':''}" data-mood="${m}">${m}</button>
+    `).join('') + `<button type="button" class="mood-btn${selectedMood===''?' selected':''}" data-mood="" title="No mood">—</button>`;
+    wrap.querySelectorAll('.mood-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        selectedMood = btn.dataset.mood;
+        wrap.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  }
+
+  function turnPage(swapFn){
+    const pages = el('pagesContainer');
+    pages.classList.add('turning-out');
+    setTimeout(()=>{
+      swapFn();
+      pages.classList.remove('turning-out');
+      pages.classList.add('turning-in');
+      setTimeout(()=> pages.classList.remove('turning-in'), 400);
+      pages.scrollTop = 0;
+    }, 180);
+  }
+
+  function renderCover(){
+    el('coverTitle').textContent = diaryData.title || 'My Diary';
+    el('coverSub').textContent = diaryData.subtitle || '';
+    el('bookTitle').textContent = diaryData.title || 'My Diary';
+    el('loadingMsg').style.display = 'none';
+    el('coverContent').style.display = 'block';
+  }
+
+  function renderToc(){
+    const toc = el('toc');
+    const entries = [...diaryData.entries].sort((a,b)=> (b.order||0)-(a.order||0));
+    if(entries.length === 0){
+      toc.innerHTML = `<div class="toc-empty">
+        <p>These pages are still blank.</p>
+        ${isOwner ? '<p>Click below to write the first entry.</p>' : '<p>Check back soon — a story is on its way.</p>'}
+      </div>`;
+    } else {
+      const latestId = entries[0] ? entries[0].id : null;
+      toc.innerHTML = entries.map(entry => `
+        <div class="entry-row${entry.id===latestId ? ' is-latest' : ''}" data-id="${entry.id}">
+          <span class="entry-date">${escapeHtml(entry.date||'')}</span>
+          ${entry.mood ? `<span class="entry-mood">${entry.mood}</span>` : ''}
+          <span class="entry-title">${escapeHtml(entry.title||'Untitled')}</span>
+          ${isOwner ? `<span class="entry-actions">
+            <button class="icon-btn" data-action="edit" data-id="${entry.id}" title="Edit">&#9998;</button>
+            <button class="icon-btn" data-action="delete" data-id="${entry.id}" title="Delete">&#128465;</button>
+          </span>` : ''}
+        </div>
+      `).join('');
+    }
+    if(isOwner){
+      toc.innerHTML += `<button class="add-entry-fab" id="addEntryBtn">+ Write a new entry</button>`;
+    }
+
+    toc.querySelectorAll('.entry-row').forEach(row=>{
+      row.addEventListener('click', (e)=>{
+        if(e.target.closest('.icon-btn')) return;
+        openEntry(row.dataset.id);
+      });
+    });
+    toc.querySelectorAll('[data-action="edit"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEditor(btn.dataset.id));
+    });
+    toc.querySelectorAll('[data-action="delete"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteEntry(btn.dataset.id));
+    });
+    const addBtn = el('addEntryBtn');
+    if(addBtn) addBtn.addEventListener('click', ()=> openEditor(null));
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function openEntry(id){
+    const entry = diaryData.entries.find(e=>e.id===id);
+    if(!entry) return;
+    turnPage(()=>{
+      el('toc').style.display = 'none';
+      el('editorPanel').style.display = 'none';
+      el('reading').classList.add('visible');
+      el('readingDate').textContent = entry.date || '';
+      el('readingMood').textContent = entry.mood || '';
+      el('readingTitleText').textContent = entry.title || 'Untitled';
+      el('readingBody').textContent = entry.content || '';
+    });
+  }
+
+  function showToc(){
+    turnPage(()=>{
+      el('reading').classList.remove('visible');
+      el('editorPanel').style.display = 'none';
+      el('toc').style.display = 'block';
+      renderToc();
+    });
+  }
+
+  function openEditor(id){
+    editingEntryId = id;
+    turnPage(()=>{
+      el('toc').style.display = 'none';
+      el('reading').classList.remove('visible');
+      el('editorPanel').style.display = 'block';
+      if(id){
+        const entry = diaryData.entries.find(e=>e.id===id);
+        el('editorHeading').textContent = 'Edit entry';
+        el('entryDateInput').value = entry.date || '';
+        el('entryTitleInput').value = entry.title || '';
+        el('entryBodyInput').value = entry.content || '';
+        renderMoodPicker(entry.mood || '');
+      } else {
+        el('editorHeading').textContent = 'New entry';
+        el('entryDateInput').value = new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+        el('entryTitleInput').value = '';
+        el('entryBodyInput').value = '';
+        renderMoodPicker('');
+      }
+    });
+  }
+
+  async function saveEntry(){
+    const date = el('entryDateInput').value.trim();
+    const title = el('entryTitleInput').value.trim();
+    const content = el('entryBodyInput').value;
+    const mood = selectedMood;
+    if(!title){ el('entryTitleInput').focus(); return; }
+
+    if(editingEntryId){
+      const entry = diaryData.entries.find(e=>e.id===editingEntryId);
+      entry.date = date; entry.title = title; entry.content = content; entry.mood = mood;
+    } else {
+      diaryData.entries.push({
+        id: 'e' + Date.now() + Math.floor(Math.random()*1000),
+        date, title, content, mood,
+        order: Date.now()
+      });
+    }
+    await saveData();
+    showToc();
+  }
+
+  async function deleteEntry(id){
+    if(!confirm('Delete this entry? This cannot be undone.')) return;
+    diaryData.entries = diaryData.entries.filter(e=>e.id!==id);
+    await saveData();
+    renderToc();
+  }
+
+  // ---------- Cover / book open ----------
+  el('cover').addEventListener('click', ()=>{
+    el('cover').classList.add('open');
+    setTimeout(()=>{
+      el('book').classList.add('visible');
+      showToc();
+    }, 150);
+  });
+  el('closeBook').addEventListener('click', ()=>{
+    el('book').classList.remove('visible');
+    el('cover').classList.remove('open');
+  });
+  el('readingBack').addEventListener('click', showToc);
+  el('cancelEntryBtn').addEventListener('click', showToc);
+  el('saveEntryBtn').addEventListener('click', saveEntry);
+
+  // ---------- Owner unlock ----------
+  function openModal(setupMode){
+    el('modalError').textContent = '';
+    el('modalPasswordInput').value = '';
+    if(setupMode){
+      el('modalHeading').textContent = 'Set up your diary';
+      el('modalSub').textContent = 'Choose a password. Anyone with it can add or edit entries, so keep it private.';
+    } else {
+      el('modalHeading').textContent = 'Unlock editing';
+      el('modalSub').textContent = 'Enter your diary password to write or edit entries.';
+    }
+    el('modalBackdrop').classList.add('visible');
+    el('modalPasswordInput').focus();
+  }
+  function closeModal(){
+    el('modalBackdrop').classList.remove('visible');
+  }
+
+  el('penFab').addEventListener('click', ()=>{
+    if(isOwner){
+      isOwner = false;
+      el('penFab').classList.remove('active');
+      showToc();
+      return;
+    }
+    openModal(!diaryData.password);
+  });
+  el('modalCancel').addEventListener('click', closeModal);
+  el('modalBackdrop').addEventListener('click', (e)=>{
+    if(e.target === el('modalBackdrop')) closeModal();
+  });
+  el('modalConfirm').addEventListener('click', async ()=>{
+    const val = el('modalPasswordInput').value;
+    if(!diaryData.password){
+      if(!val || val.length < 3){
+        el('modalError').textContent = 'Please choose a password with at least 3 characters.';
+        return;
+      }
+      diaryData.password = val;
+      await saveData();
+      isOwner = true;
+      el('penFab').classList.add('active');
+      closeModal();
+      showToc();
+      return;
+    }
+    if(val === diaryData.password){
+      isOwner = true;
+      el('penFab').classList.add('active');
+      closeModal();
+      showToc();
+    } else {
+      el('modalError').textContent = 'That password is not right.';
+    }
+  });
+  el('modalPasswordInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') el('modalConfirm').click();
+  });
+
+  // ---------- Leave a message (always goes to the fixed owner address) ----------
+  const MESSAGE_RECIPIENT = 'vignesh.vgm9363@gmail.com';
+
+  el('messageFab').addEventListener('click', ()=>{
+    el('msgNameInput').value = '';
+    el('msgBodyInput').value = '';
+    el('msgError').textContent = '';
+    el('messageModalBackdrop').classList.add('visible');
+    el('msgNameInput').focus();
+  });
+  el('msgCancelBtn').addEventListener('click', ()=>{
+    el('messageModalBackdrop').classList.remove('visible');
+  });
+  el('messageModalBackdrop').addEventListener('click', (e)=>{
+    if(e.target === el('messageModalBackdrop')) el('messageModalBackdrop').classList.remove('visible');
+  });
+  el('msgSendBtn').addEventListener('click', ()=>{
+    const name = el('msgNameInput').value.trim();
+    const body = el('msgBodyInput').value.trim();
+    if(!body){
+      el('msgError').textContent = 'Please write a message first.';
+      return;
+    }
+    const subject = encodeURIComponent(`Message from ${name || 'a diary visitor'} via "${diaryData.title || 'My Diary'}"`);
+    const fullBody = encodeURIComponent(`${body}\n\n— ${name || 'Anonymous'}`);
+    window.location.href = `mailto:${MESSAGE_RECIPIENT}?subject=${subject}&body=${fullBody}`;
+    el('messageModalBackdrop').classList.remove('visible');
+  });
+
+  // ---------- Init ----------
+  diaryData = await loadData();
+  if(!diaryData){
+    diaryData = defaultData();
+    await saveData();
+  }
+  renderCover();
+})();
+</script>
+
+</body>
+</html>
